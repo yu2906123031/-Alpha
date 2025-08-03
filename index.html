@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>币安Alpha管理系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .cycle-info {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .controls {
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .form-group {
+            display: flex;
+            gap: 15px;
+            align-items: end;
+            flex-wrap: wrap;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .input-group label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .input-group input {
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+        }
+
+        .table-container {
+            padding: 30px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .score-high {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .score-medium {
+            color: #ffc107;
+            font-weight: 600;
+        }
+
+        .score-low {
+            color: #dc3545;
+            font-weight: 600;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #f8f9fa;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>币安Alpha管理系统</h1>
+            <p>智能积分管理 · 15天周期追踪</p>
+
+        </div>
+
+        <div class="controls">
+            <div class="form-group">
+                <div class="input-group">
+                    <label for="accountName">账号名称</label>
+                    <input type="text" id="accountName" placeholder="输入账号名称">
+                </div>
+                <div class="input-group">
+                    <label for="currentScore">当前分数</label>
+                    <input type="number" id="currentScore" placeholder="0" min="0" step="0.1">
+                </div>
+                <div class="input-group">
+                    <label for="dailyScore">每日加分</label>
+                    <input type="number" id="dailyScore" placeholder="0" min="0" step="0.1">
+                </div>
+                <div class="input-group">
+                    <label for="regressionScore">回归分数</label>
+                    <input type="number" id="regressionScore" placeholder="0" min="0" step="0.1">
+                </div>
+                <div class="input-group">
+                    <label for="regressionDatePicker">回归日期 (点击选择多个日期)</label>
+                    <input type="date" id="regressionDatePicker" onchange="addRegressionDate()">
+                    <div id="selectedDates" style="margin-top: 10px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; min-height: 40px; border: 1px solid #e9ecef;">
+                        <div style="font-size: 12px; color: #6c757d; margin-bottom: 5px;">已选择的回归日期：</div>
+                        <div id="datesList" style="display: flex; flex-wrap: wrap; gap: 5px;"></div>
+                    </div>
+                    <input type="hidden" id="regressionDate">
+                </div>
+                <button class="btn btn-primary" onclick="addAccount()">添加账号</button>
+                <button class="btn btn-warning" onclick="alphaManager.setManualResetDays()" style="background-color: #f39c12; border-color: #f39c12;">设置重置天数</button>
+                <button class="btn btn-danger" onclick="resetCycle()">重置周期</button>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table id="accountTable">
+                <thead>
+                    <tr>
+                        <th>账号名称</th>
+                        <th>当前分数</th>
+                        <th>每日加分</th>
+                        <th>今日回归</th>
+                        <th>总积分</th>
+                        <th>积分等级</th>
+                        <th>回归日期</th>
+                        <th>距离重置</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="accountTableBody">
+                    <!-- 数据将通过JavaScript动态添加 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 账号详情模态框 -->
+    <div id="accountModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 15px; padding: 30px; max-width: 600px; width: 90%; max-height: 80%; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 id="modalAccountName" style="margin: 0; color: #667eea;">账号详情</h2>
+                <button onclick="closeAccountModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #6c757d;">&times;</button>
+            </div>
+            
+            <div id="modalAccountInfo" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                <!-- 账号基本信息将在这里显示 -->
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h3 style="color: #495057; margin-bottom: 15px;">积分操作</h3>
+                <button class="btn btn-danger" onclick="claimAirdrop()" style="margin-right: 10px;">领取空投 (-15分)</button>
+                <button class="btn btn-primary" onclick="addCustomScore()">自定义积分变动</button>
+            </div>
+            
+            <div>
+                <h3 style="color: #495057; margin-bottom: 15px;">积分历史记录</h3>
+                <div id="scoreHistory" style="max-height: 300px; overflow-y: auto; border: 1px solid #e9ecef; border-radius: 8px; padding: 15px;">
+                    <!-- 积分历史记录将在这里显示 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 空投领取模态框 -->
+    <div id="airdropModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1001;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 15px; padding: 30px; max-width: 400px; width: 90%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0; color: #28a745;">空投领取</h2>
+                <button onclick="closeAirdropModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #6c757d;">&times;</button>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <p style="color: #495057; margin-bottom: 15px;">为账号 <strong id="airdropAccountName"></strong> 领取空投奖励</p>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #495057;">领取日期:</label>
+                    <input type="date" id="airdropDate" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #495057;">奖励积分:</label>
+                    <input type="number" id="airdropScore" value="15" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                </div>
+            </div>
+            
+            <div style="text-align: right;">
+                <button onclick="closeAirdropModal()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 5px; margin-right: 10px; cursor: pointer;">取消</button>
+                <button onclick="confirmAirdrop()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">确认领取</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js?v=20241231-3"></script>
+</body>
+</html>
