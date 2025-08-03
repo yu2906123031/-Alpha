@@ -10,6 +10,7 @@ class BinanceAlphaManager {
         this.manualResetDays = parseInt(localStorage.getItem('manualResetDays')) || null;
         this.currentAirdropAccountId = null;
         this.editingAccountId = null;
+        this.sortOrder = localStorage.getItem('sortOrder') || 'score'; // 默认按积分排序
         this.init();
     }
 
@@ -18,6 +19,11 @@ class BinanceAlphaManager {
         this.renderTable();
         this.updateStats();
         this.startCycleTimer();
+        // 设置排序选择器的初始值
+        const sortOrderSelect = document.getElementById('sortOrder');
+        if (sortOrderSelect) {
+            sortOrderSelect.value = this.sortOrder;
+        }
     }
 
     // 计算资金积分
@@ -144,26 +150,27 @@ class BinanceAlphaManager {
     
     // 显示编辑模态框
     showEditModal() {
-        // 修改按钮文本和标题
-        const addButton = document.querySelector('button[onclick="addAccount()"]');
+        // 修改按钮文本和功能
+        const addButton = document.querySelector('.btn-primary');
         if (addButton) {
             addButton.textContent = '更新账号';
             addButton.setAttribute('onclick', 'updateAccount()');
-        }
-        
-        // 修改表单标题（如果有的话）
-        const formTitle = document.querySelector('.form-group h3');
-        if (formTitle) {
-            formTitle.textContent = '编辑账号';
         }
     }
     
     // 更新账号信息
     updateAccount() {
-        if (!this.editingAccountId) return;
+        if (!this.editingAccountId) {
+            alert('错误：未找到要编辑的账号ID');
+            return;
+        }
         
         const account = this.accounts.find(acc => acc.id === this.editingAccountId);
-        if (!account) return;
+        if (!account) {
+            alert('错误：未找到要编辑的账号');
+            this.editingAccountId = null;
+            return;
+        }
         
         const name = document.getElementById('accountName').value;
         const currentScore = document.getElementById('currentScore').value;
@@ -216,38 +223,46 @@ class BinanceAlphaManager {
         this.editingAccountId = null;
         selectedRegressionDates = [];
         
-        // 恢复按钮文本
-        const updateButton = document.querySelector('button[onclick="updateAccount()"]');
-        if (updateButton) {
-            updateButton.textContent = '添加账号';
-            updateButton.setAttribute('onclick', 'addAccount()');
-        }
-        
-        // 恢复表单标题
-        const formTitle = document.querySelector('.form-group h3');
-        if (formTitle) {
-            formTitle.textContent = '添加新账号';
+        // 恢复按钮文本和功能
+        const addButton = document.querySelector('.btn-primary');
+        if (addButton) {
+            addButton.textContent = '添加账号';
+            addButton.setAttribute('onclick', 'addAccount()');
         }
         
         alert('账号信息已更新！');
     }
 
     // 渲染表格
+    changeSortOrder() {
+        const sortOrderSelect = document.getElementById('sortOrder');
+        this.sortOrder = sortOrderSelect.value;
+        localStorage.setItem('sortOrder', this.sortOrder);
+        this.renderTable();
+    }
+
     renderTable() {
         const tbody = document.getElementById('accountTableBody');
         tbody.innerHTML = '';
 
         if (this.accounts.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #6c757d; padding: 40px;">暂无账号数据，请添加账号</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #6c757d; padding: 40px;">暂无账号数据，请添加账号</td></tr>';
             return;
         }
 
-        // 按Alpha积分降序排列
-        const sortedAccounts = [...this.accounts].sort((a, b) => {
-            const aScore = this.calculateAlphaScore(a.currentScore, a.dailyScore, a.regressionScore, a.regressionDate, a.createdAt);
-            const bScore = this.calculateAlphaScore(b.currentScore, b.dailyScore, b.regressionScore, b.regressionDate, b.createdAt);
-            return bScore - aScore;
-        });
+        // 根据排序方式进行排序
+        let sortedAccounts;
+        if (this.sortOrder === 'input') {
+            // 按输入顺序排列（按ID升序，因为ID是递增的）
+            sortedAccounts = [...this.accounts].sort((a, b) => a.id - b.id);
+        } else {
+            // 按Alpha积分降序排列
+            sortedAccounts = [...this.accounts].sort((a, b) => {
+                const aScore = this.calculateAlphaScore(a.currentScore, a.dailyScore, a.regressionScore, a.regressionDate, a.createdAt);
+                const bScore = this.calculateAlphaScore(b.currentScore, b.dailyScore, b.regressionScore, b.regressionDate, b.createdAt);
+                return bScore - aScore;
+            });
+        }
 
         sortedAccounts.forEach(account => {
             const accountResetDays = this.getAccountResetDays(account);
@@ -282,17 +297,14 @@ class BinanceAlphaManager {
                 }
             }
             
-            // 重置天数显示：显示是独立设置还是全局设置
-            const resetDaysDisplay = account.resetDate ? 
-                `${accountResetDays}天(独立)` : `${accountResetDays}天(全局)`;
+            // 重置天数显示：只显示天数
+            const resetDaysDisplay = `${accountResetDays}天`;
             
             row.innerHTML = `
                 <td><strong><a href="#" onclick="alphaManager.showAccountDetail(${account.id}); return false;" style="color: #667eea; text-decoration: none;">${account.name}</a></strong></td>
                 <td>${account.currentScore}分</td>
                 <td>${account.dailyScore}分/天</td>
                 <td style="color: ${todayRegressionCount > 0 ? '#28a745' : '#6c757d'}; font-weight: ${todayRegressionCount > 0 ? 'bold' : 'normal'};">今日${todayRegressionCount}次</td>
-                <td class="${scoreLevel.class}">${currentAlphaScore}</td>
-                <td class="${scoreLevel.class}">${scoreLevel.level}</td>
                 <td style="font-size: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${account.regressionDate || '未设置'}">${regressionDateDisplay}</td>
                 <td>${resetDaysDisplay}</td>
                 <td>
@@ -337,11 +349,24 @@ class BinanceAlphaManager {
         return Math.min(diffDays, 15);
     }
 
-    // 获取距离重置的天数（全局）
+    // 获取距离重置的天数（全局）- 独立于重置时间设置
     getDaysUntilReset() {
-        if (this.manualResetDays !== null) {
-            return this.manualResetDays;
+        // 优先使用设置的重置时间，如果没有设置则使用15天周期的默认逻辑
+        const resetTime = localStorage.getItem('resetTime');
+        if (resetTime) {
+            const resetDate = new Date(resetTime);
+            const now = new Date();
+            
+            // 将时间设置为当天的开始时间，避免时区和时间差异影响
+            resetDate.setHours(0, 0, 0, 0);
+            now.setHours(0, 0, 0, 0);
+            
+            const diffTime = resetDate - now;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return Math.max(diffDays, 0);
         }
+        
+        // 如果没有设置重置时间，使用15天周期的默认逻辑
         const cycleDay = this.getCurrentCycleDay();
         return Math.max(15 - cycleDay + 1, 0);
     }
@@ -351,6 +376,11 @@ class BinanceAlphaManager {
         if (account.resetDate) {
             const resetDate = new Date(account.resetDate);
             const now = new Date();
+            
+            // 将时间设置为当天的开始时间，避免时区和时间差异影响
+            resetDate.setHours(0, 0, 0, 0);
+            now.setHours(0, 0, 0, 0);
+            
             const diffTime = resetDate - now;
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             return Math.max(diffDays, 0);
@@ -401,24 +431,161 @@ class BinanceAlphaManager {
         const account = this.accounts.find(acc => acc.id === accountId);
         if (!account) return;
         
-        const dateStr = prompt(`请输入 ${account.name} 的重置日期（格式：YYYY-MM-DD，输入空值取消设置）:`);
-        if (dateStr === null) return; // 用户取消
+        this.showResetDateModal(account);
+    }
+
+    // 显示重置日期设置模态框
+    showResetDateModal(account) {
+        // 创建模态框HTML
+        const modalHtml = `
+            <div id="resetDateModal" style="display: block; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1002;">
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 15px; padding: 30px; max-width: 450px; width: 90%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 style="margin: 0; color: #667eea;">设置重置时间</h2>
+                        <button onclick="alphaManager.closeResetDateModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #6c757d;">&times;</button>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <p style="color: #495057; margin-bottom: 15px;">为账号 <strong>${account.name}</strong> 设置独立重置时间</p>
+                        
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #495057;">输入方式:</label>
+                            <select id="resetInputType" onchange="alphaManager.toggleResetInputType()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+                                <option value="days">按天数设置（如：1表示明天）</option>
+                                <option value="date">按具体日期设置</option>
+                            </select>
+                        </div>
+                        
+                        <div id="daysInput" style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #495057;">天数:</label>
+                            <input type="number" id="resetDays" min="1" max="365" placeholder="输入天数（1-365）" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+                            <small style="color: #6c757d;">1表示明天，2表示后天，以此类推</small>
+                        </div>
+                        
+                        <div id="dateInput" style="margin-bottom: 15px; display: none;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #495057;">重置日期:</label>
+                            <input type="date" id="resetDate" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                        <button class="btn btn-secondary" onclick="alphaManager.clearAccountResetDate(${account.id})" style="margin-right: auto;">取消设置</button>
+                        <button class="btn btn-secondary" onclick="alphaManager.closeResetDateModal()">取消</button>
+                        <button class="btn btn-primary" onclick="alphaManager.confirmResetDate(${account.id})">确定</button>
+                    </div>
+                </div>
+            </div>
+        `;
         
-        if (dateStr.trim() === '') {
-            account.resetDate = null;
-            alert(`已取消 ${account.name} 的独立重置日期设置`);
+        // 添加到页面
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    // 切换输入类型
+    toggleResetInputType() {
+        const inputType = document.getElementById('resetInputType').value;
+        const daysInput = document.getElementById('daysInput');
+        const dateInput = document.getElementById('dateInput');
+        
+        if (inputType === 'days') {
+            daysInput.style.display = 'block';
+            dateInput.style.display = 'none';
         } else {
-            const resetDate = new Date(dateStr);
-            if (isNaN(resetDate.getTime())) {
-                alert('日期格式错误，请使用 YYYY-MM-DD 格式');
+            daysInput.style.display = 'none';
+            dateInput.style.display = 'block';
+        }
+    }
+
+    // 确认重置日期设置
+    confirmResetDate(accountId) {
+        const account = this.accounts.find(acc => acc.id === accountId);
+        if (!account) return;
+        
+        const inputType = document.getElementById('resetInputType').value;
+        let resetDate;
+        
+        if (inputType === 'days') {
+            const days = parseInt(document.getElementById('resetDays').value);
+            if (!days || days < 1 || days > 365) {
+                this.showMessage('请输入有效的天数（1-365）', 'error');
                 return;
             }
-            account.resetDate = resetDate.toISOString();
-            alert(`已设置 ${account.name} 的重置日期为 ${dateStr}`);
+            resetDate = new Date();
+            resetDate.setDate(resetDate.getDate() + days);
+            resetDate.setHours(0, 0, 0, 0);
+        } else {
+            const dateValue = document.getElementById('resetDate').value;
+            if (!dateValue) {
+                this.showMessage('请选择重置日期', 'error');
+                return;
+            }
+            resetDate = new Date(dateValue);
+            if (isNaN(resetDate.getTime())) {
+                this.showMessage('日期格式错误', 'error');
+                return;
+            }
         }
         
+        account.resetDate = resetDate.toISOString();
         this.saveData();
         this.renderTable();
+        this.closeResetDateModal();
+        this.showMessage(`已为 ${account.name} 设置重置时间`, 'success');
+    }
+
+    // 清除账号重置日期
+    clearAccountResetDate(accountId) {
+        const account = this.accounts.find(acc => acc.id === accountId);
+        if (!account) return;
+        
+        account.resetDate = null;
+        this.saveData();
+        this.renderTable();
+        this.closeResetDateModal();
+        this.showMessage(`已取消 ${account.name} 的独立重置日期设置`, 'success');
+    }
+
+    // 关闭重置日期模态框
+    closeResetDateModal() {
+        const modal = document.getElementById('resetDateModal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    // 显示消息提示
+    showMessage(message, type = 'info') {
+        const messageDiv = document.createElement('div');
+        messageDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 2000;
+            animation: slideInRight 0.3s ease-out;
+        `;
+        
+        if (type === 'success') {
+            messageDiv.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
+        } else if (type === 'error') {
+            messageDiv.style.background = 'linear-gradient(135deg, #dc3545, #fd7e14)';
+        } else {
+            messageDiv.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
+        }
+        
+        messageDiv.textContent = message;
+        document.body.appendChild(messageDiv);
+        
+        // 3秒后自动移除
+        setTimeout(() => {
+            if (messageDiv.parentNode) {
+                messageDiv.style.animation = 'slideOutRight 0.3s ease-in';
+                setTimeout(() => messageDiv.remove(), 300);
+            }
+        }, 3000);
     }
 
     // 重置周期
@@ -622,6 +789,12 @@ class BinanceAlphaManager {
 
     // 保存数据到本地存储
     saveData() {
+        // 数据验证：确保不会意外清空所有账号数据
+        if (!Array.isArray(this.accounts)) {
+            console.error('错误：accounts不是数组，取消保存操作');
+            return;
+        }
+        
         localStorage.setItem('binanceAccounts', JSON.stringify(this.accounts));
         localStorage.setItem('cycleStartDate', this.cycleStartDate);
         localStorage.setItem('currentCycle', this.currentCycle.toString());
@@ -688,9 +861,7 @@ function updateAccount() {
     alphaManager.updateAccount();
 }
 
-function resetCycle() {
-    alphaManager.resetCycle();
-}
+
 
 // 关闭账号详情模态框
 function closeAccountModal() {
@@ -892,6 +1063,5 @@ document.addEventListener('DOMContentLoaded', function() {
     
     controls.appendChild(exportBtn);
     controls.appendChild(importBtn);
-    
 
 });
